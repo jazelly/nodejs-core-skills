@@ -1,6 +1,6 @@
 ---
 name: nodejs-core-skills
-description: Used when working with Node.js Core Runtime. Covers environment setup (macOS/Linux/Windows), building with Ninja, running parallel/sequential tests, writing JS and C++ tests, commit message formatting, and Node.js internal JS coding conventions (primordials, null-prototype objects, performance patterns). Use when working on Node.js core patches, writing tests for Node.js, preparing commits for nodejs/node, or reviewing Node.js coding patterns.
+description: Use when committing to nodejs/node, writing or running Node.js core tests, building the Node.js binary from source, exploring or navigating the Node.js source tree, or writing JS/C++ code inside Node.js core.
 ---
 
 ## Project structure
@@ -270,6 +270,17 @@ Signed-off-by: Your Name <your@email.com>
 6. `Fixes:` / `Refs:` with **full URLs** (not just issue numbers)
 7. `Signed-off-by:` required (DCO)
 8. For `semver-major`: explain the breaking change, trigger, and exact change
+
+### Verify after committing
+
+After each commit, run the checker to validate all commits ahead of `main`:
+
+```bash
+./tools/check-commits.sh        # compares against main (default)
+./tools/check-commits.sh upstream/main  # or any other base branch
+```
+
+The script reports a per-commit PASS/FAIL against all rules above and exits non-zero if any commit fails.
 
 ### Examples
 
