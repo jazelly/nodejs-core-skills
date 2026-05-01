@@ -351,6 +351,35 @@ Common patterns in performance-sensitive Node.js core code:
 - **Power-of-two arithmetic**: use bit manipulation (`n |= n >>> 1; ...`) for next-power-of-two calculations
 - **Retain `for(;;)` in hot paths**: even where higher-level constructs exist, `for(;;)` loops are intentionally kept for performance — see comments in `_http_outgoing.js`
 
+### Benchmark PR lessons: essential DOs / NOT DOs (JS + C++)
+
+These are recurring patterns from benchmark-backed Node.js PRs. Use them as default heuristics when changing hot paths.
+
+#### JavaScript perspective
+
+**DO**
+- Add explicit fast paths for common inputs, keep correctness via existing slow paths (e.g. buffered webstreams reads, URL ASCII path decode fast path): [#61807](https://github.com/nodejs/node/pull/61807), [#60749](https://github.com/nodejs/node/pull/60749)
+- Remove repeated allocations/clones in tight loops (`emit`, `Buffer.concat`, temp arrays): [#62261](https://github.com/nodejs/node/pull/62261), [#60399](https://github.com/nodejs/node/pull/60399), [#61721](https://github.com/nodejs/node/pull/61721)
+- Skip redundant validation/indirection when invariants are already established internally: [#60558](https://github.com/nodejs/node/pull/60558), [#61721](https://github.com/nodejs/node/pull/61721)
+- Gate expensive behavior on actual need (context propagation, decoding, conversions): [#60913](https://github.com/nodejs/node/pull/60913), [#60749](https://github.com/nodejs/node/pull/60749)
+
+**NOT DO**
+- Do not allocate per-iteration helper objects or clone arrays on every call in hot paths (move allocation to mutation/setup time): [#62261](https://github.com/nodejs/node/pull/62261), [#61375](https://github.com/nodejs/node/pull/61375)
+- Do not use `apply()` when arguments are known and not already an array; prefer `call()` in these paths: [#60796](https://github.com/nodejs/node/pull/60796), [#60825](https://github.com/nodejs/node/pull/60825)
+- Do not claim "faster" from one micro-case; benchmark across sizes/shapes because wins can flip at small inputs: [#61496](https://github.com/nodejs/node/pull/61496), [#61721](https://github.com/nodejs/node/pull/61721)
+
+#### C++ perspective
+
+**DO**
+- Reduce allocation complexity first (`O(n)` small allocs -> slab/contiguous strategy): [#61375](https://github.com/nodejs/node/pull/61375)
+- Use native/SIMD paths for heavy encoding and byte transforms where data volume justifies it: [#61496](https://github.com/nodejs/node/pull/61496), [#60843](https://github.com/nodejs/node/pull/60843)
+- Add V8 Fast API/native fast functions for hot primitives while preserving slow-path behavior: [#61871](https://github.com/nodejs/node/pull/61871)
+- Keep benchmark matrices wide (input type + size), and report regressions explicitly alongside wins: [#61496](https://github.com/nodejs/node/pull/61496)
+
+**NOT DO**
+- Do not optimize only the large-buffer case; check short-string/small-buffer regressions before landing: [#61496](https://github.com/nodejs/node/pull/61496)
+- Do not introduce JS<->C++ boundary work unless it removes more overhead than it adds; prove with targeted benchmarks and significance output: [#61871](https://github.com/nodejs/node/pull/61871), [#61721](https://github.com/nodejs/node/pull/61721)
+
 ## 6. Advanced development tips
 
 ### C++ LSP setup with clangd
